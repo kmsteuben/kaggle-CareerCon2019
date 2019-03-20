@@ -36,4 +36,17 @@ head(x_train)
 # Evaluate models
 # Run predictions and submit
 
+#train_data 70%
+#validation_data 15%
+#test_data 15%
+
+size_train <- as.integer(.7 * nrow(x_train))
+size_validation <- as.integer(.15 * nrow(x_train))
+size_test <- nrow(x_train) - size_train - size_validation
+
+train <- sample(1:nrow(x_train), size_train)
+not_train <- setdiff(1:nrow(x_train), train)
+validation <- sample(not_train, size_validation)
+test <- setdiff(not_train, validation)
+
 
