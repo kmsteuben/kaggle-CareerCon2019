@@ -28,8 +28,6 @@ table(y_train$surface)
 # Classification with 9 possible classes
 # Note: variable sizes of outputs in training set
 
-head(x_train)
-
 ## To do:
 # Create features from orientation, angular velocity, and linear acceleration
 # Use those features to train classification model (try random forests, multi-class logistic regression, etc.)
@@ -40,6 +38,7 @@ head(x_train)
 #validation_data 15%
 #test_data 15%
 
+set.seed(314567)
 size_train <- as.integer(.7 * nrow(x_train))
 size_validation <- as.integer(.15 * nrow(x_train))
 size_test <- nrow(x_train) - size_train - size_validation
@@ -48,5 +47,7 @@ train <- sample(1:nrow(x_train), size_train)
 not_train <- setdiff(1:nrow(x_train), train)
 validation <- sample(not_train, size_validation)
 test <- setdiff(not_train, validation)
+
+xy_train <- merge(x_train,y_train,by = "series_id")
 
 
