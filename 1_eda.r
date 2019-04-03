@@ -30,24 +30,48 @@ table(y_train$surface)
 
 ## To do:
 # Create features from orientation, angular velocity, and linear acceleration
-# Use those features to train classification model (try random forests, multi-class logistic regression, etc.)
-# Evaluate models
-# Run predictions and submit
+
+
+## Feature Extraction by series (should get this into just orientation, angular velocity, and linear acceleration first)
+cols <- c("orientation_X", "orientation_Y", "orientation_Z", "orientation_W",
+          "angular_velocity_X", "angular_velocity_Y", "angular_velocity_Z",
+          "linear_acceleration_X", "linear_acceleration_Y", "linear_acceleration_Z")
+
+x_train_mean <- x_train[, lapply(.SD, mean),
+                   by = series_id,
+                .SDcols = cols][, setnames(.SD, cols, paste(cols, "mean", sep = "_"))]
+x_train_sd <- x_train[, lapply(.SD, sd),
+                        by = series_id,
+                        .SDcols = cols][, setnames(.SD, cols, paste(cols, "sd", sep = "_"))]
+x_train_median <- x_train[, lapply(.SD, median),
+                      by = series_id,
+                      .SDcols = cols][, setnames(.SD, cols, paste(cols, "median", sep = "_"))]
+x_train_IQR <- x_train[, lapply(.SD, IQR),
+                          by = series_id,
+                          .SDcols = cols][, setnames(.SD, cols, paste(cols, "IQR", sep = "_"))]
+x_train_mad <- x_train[, lapply(.SD, mad),
+                       by = series_id,
+                       .SDcols = cols][, setnames(.SD, cols, paste(cols, "mad", sep = "_"))]
+y_train <- y_train[, .(series_id, surface)]
+
+xy_train <- merge(x_train_mean,  x_train_sd, by = "series_id")
+xy_train <- merge(xy_train, x_train_median, by = "series_id")
+xy_train <- merge(xy_train, x_train_IQR, by = "series_id")
+xy_train <- merge(xy_train, x_train_mad, by = "series_id")
+xy_train <- merge(xy_train, y_train, by = "series_id")
 
 #train_data 70%
 #validation_data 15%
 #test_data 15%
 
 set.seed(314567)
-size_train <- as.integer(.7 * nrow(x_train))
-size_validation <- as.integer(.15 * nrow(x_train))
-size_test <- nrow(x_train) - size_train - size_validation
+size_train <- as.integer(.7 * nrow(xy_train))
+size_validation <- as.integer(.15 * nrow(xy_train))
+size_test <- nrow(xy_train) - size_train - size_validation
 
-train <- sample(1:nrow(x_train), size_train)
-not_train <- setdiff(1:nrow(x_train), train)
+train <- sample(1:nrow(xy_train), size_train)
+not_train <- setdiff(1:nrow(xy_train), train)
 validation <- sample(not_train, size_validation)
 test <- setdiff(not_train, validation)
-
-xy_train <- merge(x_train,y_train,by = "series_id")
 
 
