@@ -35,7 +35,7 @@ number_of_classes <- length(unique(data$surface))
 xgb_params <- list("objective" = "multi:softprob",
                    "eval_metric" = "mlogloss",
                    "num_class" = number_of_classes)
-nround <- 50
+nround <- 200
 cv.nfold <- 5
 
 # Use this code to do model selection
@@ -94,4 +94,4 @@ submission <- merge(submission, link, by.x = "max_prob", by.y = "surface")
 submission$max_prob <- NULL
 names(submission) <- c("series_id", "surface")
 submission <- submission[order(series_id),]
-write.csv(submission, file = "xgboost_submission.csv", row.names = FALSE)
+write.csv(submission, file = "xgboost_submission_3.csv", row.names = FALSE)
