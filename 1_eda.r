@@ -60,6 +60,33 @@ xy_train <- merge(xy_train, x_train_IQR, by = "series_id")
 xy_train <- merge(xy_train, x_train_mad, by = "series_id")
 xy_train <- merge(xy_train, y_train, by = "series_id")
 
+rm(x_train_mean, x_train_sd, x_train_median, x_train_IQR, x_train_mad)
+
+# Create corresponding x_test
+x_test_mean <- x_test[, lapply(.SD, mean),
+                        by = series_id,
+                        .SDcols = cols][, setnames(.SD, cols, paste(cols, "mean", sep = "_"))]
+x_test_sd <- x_test[, lapply(.SD, sd),
+                      by = series_id,
+                      .SDcols = cols][, setnames(.SD, cols, paste(cols, "sd", sep = "_"))]
+x_test_median <- x_test[, lapply(.SD, median),
+                          by = series_id,
+                          .SDcols = cols][, setnames(.SD, cols, paste(cols, "median", sep = "_"))]
+x_test_IQR <- x_test[, lapply(.SD, IQR),
+                       by = series_id,
+                       .SDcols = cols][, setnames(.SD, cols, paste(cols, "IQR", sep = "_"))]
+x_test_mad <- x_test[, lapply(.SD, mad),
+                       by = series_id,
+                       .SDcols = cols][, setnames(.SD, cols, paste(cols, "mad", sep = "_"))]
+
+
+xy_test <- merge(x_test_mean,  x_test_sd, by = "series_id")
+xy_test <- merge(xy_test, x_test_median, by = "series_id")
+xy_test <- merge(xy_test, x_test_IQR, by = "series_id")
+xy_test <- merge(xy_test, x_test_mad, by = "series_id")
+
+rm(x_test_mean, x_test_sd, x_test_median, x_test_IQR, x_test_mad)
+
 #train_data 70%
 #validation_data 15%
 #test_data 15%

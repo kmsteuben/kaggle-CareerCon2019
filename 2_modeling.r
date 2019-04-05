@@ -13,13 +13,8 @@ xy_train$surface_string <- xy_train$surface
 xy_train$surface <- as.numeric(as.factor(xy_train$surface)) - 1L # for xgboost, label must be ascending integers starting at 0
 
 # Create Test/Train split in datasets and prepare for input into xgboost
-data <-  xy_train[, .(orientation_X, orientation_Y, orientation_Z, orientation_W,
-                      angular_velocity_X, angular_velocity_Y, angular_velocity_Z,
-                      linear_acceleration_X, linear_acceleration_Y, linear_acceleration_Z,
-                      surface)]
-data_variables <- as.matrix(xy_train[, .(orientation_X, orientation_Y, orientation_Z, orientation_W,
-                              angular_velocity_X, angular_velocity_Y, angular_velocity_Z,
-                              linear_acceleration_X, linear_acceleration_Y, linear_acceleration_Z)])
+data <-  xy_train[, -c("series_id", "surface_string")]
+data_variables <- as.matrix(xy_train[, -c("series_id", "surface_string", "surface")])
 data_label <- as.matrix(xy_train[,"surface"])
 data_matrix <- xgb.DMatrix(data = as.matrix(data), label = data_label)
 
@@ -31,9 +26,7 @@ test_data <- data_variables[validation, ]
 test_label <- data_label[validation, ]
 test_matrix <- xgb.DMatrix(data = test_data, label = test_label)
 
-final_variables <- as.matrix(x_test[, .(orientation_X, orientation_Y, orientation_Z, orientation_W,
-                                        angular_velocity_X, angular_velocity_Y, angular_velocity_Z,
-                                        linear_acceleration_X, linear_acceleration_Y, linear_acceleration_Z)])
+final_variables <- as.matrix(xy_test[, -c("series_id")])
 final_matrix <- xgb.DMatrix(data = final_variables) 
 
 
@@ -85,66 +78,20 @@ print(gp)
 
 
 final_pred <- predict(bst_model, newdata = final_matrix)
-final_prediction <- matrix(final_pred, nrow = number_of_classes,
-                          ncol = length(final_pred)/ number_of_classes) %>%
-  t() %>%
-  data.frame() %>%
-  mutate(max_prob = max.col(., "last"))
+#final_prediction <- matrix(final_pred, nrow = number_of_classes,
+ #                         ncol = length(final_pred)/ number_of_classes) %>%
+  #t() %>%
+  #data.frame() %>%
+  #mutate(max_prob = max.col(., "last"))
 
 link <- unique(xy_train[, .(surface, surface_string)])
 link$surface <- link$surface + 1
 
-submission <- data.table(series_id = x_test$series_id, max_prob = final_prediction$max_prob)
+submission <- data.table(series_id = xy_test$series_id, max_prob = final_prediction$max_prob)
 View(submission[, .N, by = 'series_id,max_prob'])
-getmode <- function(v) {
-  uniqv <- unique(v)
-  uniqv[which.max(tabulate(match(v, uniqv)))]
-}
-submission <- submission[, .(best_guess = getmode(max_prob)), by = 'series_id']
-table(submission$best_guess)
-submission <- merge(submission, link, by.x = "best_guess", by.y = "surface")
-submission$best_guess <- NULL
+table(submission$max_prob)
+submission <- merge(submission, link, by.x = "max_prob", by.y = "surface")
+submission$max_prob <- NULL
 names(submission) <- c("series_id", "surface")
 submission <- submission[order(series_id),]
 write.csv(submission, file = "xgboost_submission.csv", row.names = FALSE)
-
-## Using a SVM
-library(kernlab)
-rbf <- rbfdot(sigma = 0.1)
-rm(y_train)
-modelSVM <- ksvm(surface~., data = xy_train[train,], type = "C-bsvc", kernel = rbf, C = 1, prob.model = TRUE)
-fitted(modelSVM)
-predict(modelSVM, data[validation,], type = "probabilities")
-
-xy_train$surface <- as.factor(xy_train$surface)
-## Using ANN
-library(nnet)
-ideal <- class.ind(xy_train$surface)
-modelANN = nnet(surface~linear_acceleration_X + linear_acceleration_Y + linear_acceleration_Z,
-                xy_train[train,], ideal[train,], size = 2, na.action = na.omit, softmax = TRUE)
-predictions <- predict(modelANN, xy_train[validation, ], type = "class")
-table(xy_train[validation,]$surface == predictions)
-
-modelANN = nnet(surface~linear_acceleration_X + linear_acceleration_Y + linear_acceleration_Z,
-                data = xy_train, subset = train, size = 2)
-
-cm <- table(xy_train$surface[validation], predict(modelANN, xy_train[validation, ]))
-cat("\nConfusion matrix for resulting nn model is: \n")
-print(cm)
-
-
-install.packages("neuralnet")
-library(neuralnet)
-
-nn <- neuralnet(surface~linear_acceleration_X + linear_acceleration_Y + linear_acceleration_Z,
-                data = xy_train[train,],
-                hidden = 3,
-                #act.fct = "logistic",
-                linear.output = FALSE)
-plot(nn)
-
-predict <- compute(nn, xy_train[validation,])
-
-head(predict)
-
-predictions <- predict(modelANN, x_test, type ="class")
